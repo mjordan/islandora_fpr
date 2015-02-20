@@ -1,0 +1,8 @@
+name = "Islandora FPR"
+description = "Retrieves the Format Policy Registry entries for the OJB datastream's PUID."
+package = Islandora Tools
+dependencies[] = islandora
+dependencies[] = islandora_fits
+dependencies[] = devel
+core = 7.x
+configure = admin/islandora/tools/fpr

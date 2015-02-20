@@ -1,0 +1,85 @@
+<?php
+
+/**
+ * @file
+ * Defines all the hooks this module implements, and some other functions.
+ */
+
+/**
+ * Implements hook_menu().
+ */
+function islandora_fpr_menu() {
+  $items = array();
+  $items['admin/islandora/tools/fpr'] = array(
+    'title' => 'Islandora FPR',
+    'description' => 'Configure Islandora FPR.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('islandora_fpr_admin_settings'),
+    'access arguments' => array('administer site configuration'),
+    'type' => MENU_NORMAL_ITEM,
+  );
+  $items['islandora/object/%islandora_object/puid'] = array(
+    'page callback' => 'islandora_fpr_get_fpr_data',
+    'page arguments' => array(2),
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK,
+  );
+  return $items;
+}
+
+/**
+ * Admin settings form builder.
+ */
+function islandora_fpr_admin_settings() {
+  $form['islandora_fpr_fpr_endpoint'] = array(
+    '#title' => t('FPR endpoint URL'),
+    '#type' => 'textfield',
+    '#size' => 60,
+    '#default_value' => variable_get('islandora_fpr_fpr_endpoint', 'https://fpr.example.com/fpr/api/v2/'),
+    '#description' => t("URL of the Archivematica Format Policy Registry endpoint."),
+    '#maxlength' => 255,
+  );
+  return system_settings_form($form);
+}
+
+function islandora_fpr_get_fpr_data(AbstractObject $islandora_object) {
+  $dsid = variable_get('islandora_fits_techmd_dsid', 'TECHMD');
+  if (!$islandora_object[$dsid]) {
+    return '';
+  }
+  else {
+    $puid = islandora_fpr_get_puid($islandora_object[$dsid]->content);
+    $endpoint = variable_get('islandora_fpr_fpr_endpoint', 'https://fpr.example.com/fpr/api/v2/');
+    // Pronom ID request.
+    $format_request = $endpoint . 'format-version/?pronom_id=' . $puid . '&format=json';
+    $format_response = drupal_http_request($format_request);
+    $format_response_data = json_decode($format_response->data);
+    $format_uuid = $format_response_data->objects[0]->uuid;
+    // Access rule request.
+    $access_rule_request = $endpoint . 'fp-rule/?purpose=access&format=json&fmt=' . $format_uuid;
+    $access_rule_response = drupal_http_request($access_rule_request);
+    $access_rule_data = json_decode($access_rule_response->data);
+    $access_rule_uuid = $access_rule_data->objects[0]->uuid;
+    // Access command request.
+    $access_command_request = $endpoint . 'fp-command/?format=json&' . $access_rule_uuid;
+    $access_command_response = drupal_http_request($access_command_request);
+    dsm(json_decode($access_command_response->data));
+    return '';
+  }
+}
+
+/**
+ * Parses an object's FITS datastream to get the PUID.
+ *
+ * @param string $fits_xml
+ *   The content of the FITS datastream.
+ *
+ * return string
+ *   The PRONOM ID extracted from the FITS XML.
+ */
+function islandora_fpr_get_puid($fits_xml) {
+  $xml = simplexml_load_string($fits_xml);
+  $xml->registerXPathNamespace('f', 'http://hul.harvard.edu/ois/xml/ns/fits/fits_output');
+  $puids = $xml->xpath("/f:fits/f:identification/f:identity/f:externalIdentifier[@type='puid']");
+  return $puids[0];
+}
