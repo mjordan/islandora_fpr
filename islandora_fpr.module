@@ -47,8 +47,8 @@ function islandora_fpr_admin_settings() {
     '#type' => 'textfield',
     '#size' => 5,
     '#default_value' => variable_get('islandora_fpr_http_timeout', '2'),
-    '#description' => t("Number of seconds to use as the timeout for requests to
-      the FPR endpoint."),
+    '#description' => t("Number of seconds to use as the timeout for HTTP
+      requests to the FPR endpoint."),
     '#maxlength' => 5,
   );
   return system_settings_form($form);
@@ -83,12 +83,13 @@ function islandora_fpr_get_fpr_data(AbstractObject $islandora_object) {
 
     $row[] = $puid;
     $endpoint = variable_get('islandora_fpr_fpr_endpoint', 'https://fpr.example.com/fpr/api/v2/');
+    $timeout = (int) variable_get('islandora_fpr_http_timeout', '2');
+
     // Format info request.
     $format_request = $endpoint . 'format-version/?pronom_id=' . $puid . '&format=json';
     dd($puid, 'PUID');
-    $timeout = (int) variable_get('islandora_fpr_http_timeout', '2');
     $format_response = drupal_http_request($format_request, array('timeout' => $timeout));
-    // Check for timeout.
+    // Check for timeout. We only check here, not on every request.
     if ($format_response->code === HTTP_REQUEST_TIMEOUT) {
       return t("Can't reach FPR server at @endpoint", array('@endpoint' => $endpoint));
     }
@@ -168,13 +169,17 @@ function islandora_fpr_get_fpr_data(AbstractObject $islandora_object) {
  *   The content of the FITS datastream.
  *
  * return string
- *   The PRONOM ID extracted from the FITS XML.
+ *   The PRONOM ID extracted from the FITS XML. Returns
+ *   FALSE if no 'identification' element was found or
+ *   if a conflict was explicitly found.
  */
 function islandora_fpr_get_puid($fits_xml) {
   $xml = simplexml_load_string($fits_xml);
   $xml->registerXPathNamespace('f', 'http://hul.harvard.edu/ois/xml/ns/fits/fits_output');
-  $puids = $xml->xpath("/f:fits/f:identification/f:identity/f:externalIdentifier[@type='puid']");
+  $expression = "/f:fits/f:identification/f:identity/f:externalIdentifier[@type='puid']";
+  $puids = $xml->xpath($expression);
   if (count($puids)) {
+    // There should be only one.
     return (string) $puids[0];
   }
   else {
