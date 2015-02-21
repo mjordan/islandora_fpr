@@ -12,7 +12,7 @@ The module is a proof of concept to retrieve the FPR entries for commands that c
 
 ## Configuration
 
-To configure the URL of the Archivematica FPR endpoint, visit admin/islandora/tools/fpr.
+To configure the URL of the Archivematica FPR endpoint and the HTTP timeout value, visit admin/islandora/tools/fpr.
 
 ## Usage
 

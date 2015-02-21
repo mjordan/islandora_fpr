@@ -42,6 +42,15 @@ function islandora_fpr_admin_settings() {
     '#description' => t("URL of the Archivematica Format Policy Registry endpoint."),
     '#maxlength' => 255,
   );
+  $form['islandora_fpr_http_timeout'] = array(
+    '#title' => t('Timeout'),
+    '#type' => 'textfield',
+    '#size' => 5,
+    '#default_value' => variable_get('islandora_fpr_http_timeout', '2'),
+    '#description' => t("Number of seconds to use as the timeout for requests to
+      the FPR endpoint."),
+    '#maxlength' => 5,
+  );
   return system_settings_form($form);
 }
 
@@ -68,8 +77,8 @@ function islandora_fpr_get_fpr_data(AbstractObject $islandora_object) {
     $row = array();
 
     $puid = islandora_fpr_get_puid($islandora_object[$dsid]->content);
-    if ($puid == 'CONFLICT') {
-      return t("Conflict reported by FITS, not checking the FPR.");
+    if (!$puid) {
+      return t("No PUID is available in the FITS output, skipping the FPR.");
     }
 
     $row[] = $puid;
@@ -77,7 +86,12 @@ function islandora_fpr_get_fpr_data(AbstractObject $islandora_object) {
     // Format info request.
     $format_request = $endpoint . 'format-version/?pronom_id=' . $puid . '&format=json';
     dd($puid, 'PUID');
-    $format_response = drupal_http_request($format_request);
+    $timeout = (int) variable_get('islandora_fpr_http_timeout', '2');
+    $format_response = drupal_http_request($format_request, array('timeout' => $timeout));
+    // Check for timeout.
+    if ($format_response->code === HTTP_REQUEST_TIMEOUT) {
+      return t("Can't reach FPR server at @endpoint", array('@endpoint' => $endpoint));
+    }
     $format_response_data = json_decode($format_response->data);
     if ($format_response_data->meta->total_count === 0) {
       return t("Sorry, the format @format isn't in the FPR.", array('@format' => $puid));
@@ -87,18 +101,21 @@ function islandora_fpr_get_fpr_data(AbstractObject $islandora_object) {
     $row[] = $format_description;
 
     // Access rule request.
-    $access_rule_request = $endpoint . 'fp-rule/?purpose=access&format=json&fmt=' . $format_uuid;
+    $access_rule_request = $endpoint .
+      'fp-rule/?purpose=access&format=json&fmt=' . $format_uuid;
     dd($access_rule_request, 'Access rule request');
     $access_rule_response = drupal_http_request($access_rule_request);
     $access_rule_response_data = json_decode($access_rule_response->data);
     dd($access_rule_response_data->meta->total_count, 'Access rule total count');
     if ($access_rule_response_data->meta->total_count === 0) {
-      $row[] = t("n/a (no access rule for format @puid in the FPR)", array('@puid' => $puid));
+      $row[] = t("n/a (no access rule for format @puid in the FPR)",
+        array('@puid' => $puid));
     }
     else {
       $access_rule_uuid = $access_rule_response_data->objects[0]->uuid;
       // Access command request.
-      $access_command_request = $endpoint . 'fp-command/?format=json&uuid=' . $access_rule_uuid;
+      $access_command_request = $endpoint . 'fp-command/?format=json&uuid=' .
+        $access_rule_uuid;
       dd($access_command_request, 'Access command request');
       $access_command_response = drupal_http_request($access_command_request);
       $access_command_response_data = json_decode($access_command_response->data);
@@ -112,18 +129,21 @@ function islandora_fpr_get_fpr_data(AbstractObject $islandora_object) {
     }
 
     // Preservation rule request.
-    $preservation_rule_request = $endpoint . 'fp-rule/?purpose=preservation&format=json&fmt=' . $format_uuid;
+    $preservation_rule_request = $endpoint .
+      'fp-rule/?purpose=preservation&format=json&fmt=' . $format_uuid;
     dd($preservation_rule_request, 'Preservation rule request');
     $preservation_rule_response = drupal_http_request($preservation_rule_request);
     $preservation_rule_response_data = json_decode($preservation_rule_response->data);
     dd($preservation_rule_response_data->meta->total_count, 'Preservation rule response total count');
     if ($preservation_rule_response_data->meta->total_count === 0) {
-      $row[] = t("n/a (no preservation rule for format @puid in the FPR)", array('@puid' => $puid));
+      $row[] = t("n/a (no preservation rule for format @puid in the FPR)",
+        array('@puid' => $puid));
     }
     else {
       $preservation_rule_uuid = $preservation_rule_response_data->objects[0]->uuid;
       // Preservation command request.
-      $preservation_command_request = $endpoint . 'fp-command/?format=json&uuid=' . $preservation_rule_uuid;
+      $preservation_command_request = $endpoint .
+        'fp-command/?format=json&uuid=' . $preservation_rule_uuid;
       dd($preservation_command_request, 'Preservation command request');
       $preservation_command_response = drupal_http_request($preservation_command_request);
       $preservation_command_response_data = json_decode($preservation_command_response->data);
@@ -158,8 +178,9 @@ function islandora_fpr_get_puid($fits_xml) {
     return (string) $puids[0];
   }
   else {
-    // We probably have a format conflict.
-    $conflict = $xml->xpath("/f:fits/f:identification[@status='CONFLICT']");
-    return 'CONFLICT';
+    // We probably have a format identification conflict, or FITS has
+    // not been able to deterime the PUID and has not added an 'identification'
+    // element.
+    return FALSE;
   }
 }
