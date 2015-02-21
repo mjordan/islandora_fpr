@@ -81,7 +81,8 @@ function islandora_fpr_get_fpr_data(AbstractObject $islandora_object) {
       return t("No PUID is available in the FITS output, skipping the FPR.");
     }
 
-    $row[] = $puid;
+    $row[] = l($puid, 'http://apps.nationalarchives.gov.uk/pronom/' . $puid,
+      array('attributes' => array('target' => '_blank')));
     $endpoint = variable_get('islandora_fpr_fpr_endpoint', 'https://fpr.example.com/fpr/api/v2/');
     $timeout = (int) variable_get('islandora_fpr_http_timeout', '2');
 
