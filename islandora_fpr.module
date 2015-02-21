@@ -18,7 +18,7 @@ function islandora_fpr_menu() {
     'access arguments' => array('administer site configuration'),
     'type' => MENU_NORMAL_ITEM,
   );
-  $items['islandora/object/%islandora_object/fpr'] = array(
+  $items['islandora/object/%islandora_object/manage/fpr'] = array(
     'title' => 'FPR',
     'weight' => '20',
     'page callback' => 'islandora_fpr_get_fpr_data',

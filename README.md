@@ -16,7 +16,7 @@ To configure the URL of the Archivematica FPR endpoint and the HTTP timeout valu
 
 ## Usage
 
-This module inserts an "FPR" tab into each object's display if the object has a FITS datastream. Clicking on this tab reveals information retrieved from the FPR.
+This module inserts an "FPR" subtab into each object's "Manage" tab if the object has a FITS datastream. Clicking on this tab reveals information retrieved from the FPR.
 
 ## Maintainer
 
