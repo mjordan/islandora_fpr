@@ -18,7 +18,7 @@ function islandora_fpr_menu() {
     'access arguments' => array('administer site configuration'),
     'type' => MENU_NORMAL_ITEM,
   );
-  $items['islandora/object/%islandora_object/puid'] = array(
+  $items['islandora/object/%islandora_object/fpr'] = array(
     'page callback' => 'islandora_fpr_get_fpr_data',
     'page arguments' => array(2),
     'access callback' => TRUE,
@@ -42,29 +42,78 @@ function islandora_fpr_admin_settings() {
   return system_settings_form($form);
 }
 
+/**
+ * Fetches data from the remote instance of the FPR.
+ *
+ * @param AbstractObject $islandora_object
+ *   The Islandora object.
+ *
+ * return string
+ *   A string containing the data to display.
+ */
 function islandora_fpr_get_fpr_data(AbstractObject $islandora_object) {
   $dsid = variable_get('islandora_fits_techmd_dsid', 'TECHMD');
   if (!$islandora_object[$dsid]) {
     return '';
   }
   else {
+    $header = array();
+    $header[] = array("data" => t("PUID"));
+    $header[] = array("data" => t("Description"));
+    $header[] = array("data" => t("Access command"));
+    $header[] = array("data" => t("Preservation command"));
+    $row = array();
+
     $puid = islandora_fpr_get_puid($islandora_object[$dsid]->content);
+    $row[] = $puid;
     $endpoint = variable_get('islandora_fpr_fpr_endpoint', 'https://fpr.example.com/fpr/api/v2/');
-    // Pronom ID request.
+    // Format info request.
     $format_request = $endpoint . 'format-version/?pronom_id=' . $puid . '&format=json';
     $format_response = drupal_http_request($format_request);
     $format_response_data = json_decode($format_response->data);
+    if ($format_response_data->meta->total_count == '0') {
+      return t("Sorry, the format @format isn't in the FPR.", array('@format' => $puid));
+    }
     $format_uuid = $format_response_data->objects[0]->uuid;
+    $format_description = $format_response_data->objects[0]->description;
+    $row[] = $format_description;
     // Access rule request.
     $access_rule_request = $endpoint . 'fp-rule/?purpose=access&format=json&fmt=' . $format_uuid;
     $access_rule_response = drupal_http_request($access_rule_request);
-    $access_rule_data = json_decode($access_rule_response->data);
-    $access_rule_uuid = $access_rule_data->objects[0]->uuid;
+    $access_rule_response_data = json_decode($access_rule_response->data);
+    if ($access_rule_response_data->meta->total_count == '0') {
+      return t("Sorry, the access rule for format @uuid isn't in the FPR.", array('@uuid' => $format_uuid));
+    }
+    $access_rule_uuid = $access_rule_response_data->objects[0]->uuid;
     // Access command request.
     $access_command_request = $endpoint . 'fp-command/?format=json&' . $access_rule_uuid;
     $access_command_response = drupal_http_request($access_command_request);
-    dsm(json_decode($access_command_response->data));
-    return '';
+    $access_command_response_data = json_decode($access_command_response->data);
+    if ($access_command_response_data->meta->total_count == '0') {
+      return t("Sorry, the access command for format @uuid isn't in the FPR.", array('@uuid' => $format_uuid));
+    }
+    $row[] = $access_command_response_data->objects[0]->command;
+
+    // Preservation rule request.
+    $preservation_rule_request = $endpoint . 'fp-rule/?purpose=preservation&format=json&fmt=' . $format_uuid;
+    $preservation_rule_response = drupal_http_request($preservation_rule_request);
+    $preservation_rule_response_data = json_decode($preservation_rule_response->data);
+    if ($preservation_rule_response_data->meta->total_count == '0') {
+      return t("Sorry, the preservation rule for format @uuid isn't in the FPR.", array('@uuid' => $format_uuid));
+    }
+    $preservation_rule_uuid = $preservation_rule_response_data->objects[0]->uuid;
+    // Preservation command request.
+    $preservation_command_request = $endpoint . 'fp-command/?format=json&' . $preservation_rule_uuid;
+    $preservation_command_response = drupal_http_request($preservation_command_request);
+    $preservation_command_response_data = json_decode($preservation_command_response->data);
+    if ($preservation_command_response_data->meta->total_count == '0') {
+      return t("Sorry, the access command for format @uuid isn't in the FPR.", array('@uuid' => $format_uuid));
+    }
+    $row[] = $preservation_command_response_data->objects[0]->command;
+
+
+    $rows[] = $row;
+    return theme('table', array('header' => $header, 'rows' => $rows));;
   }
 }
 

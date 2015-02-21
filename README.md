@@ -16,7 +16,7 @@ To configure the URL of the Archivematica FPR endpoint, visit admin/islandora/to
 
 ## Usage
 
-Currently, visiting islandora/object/%islandora_object/puid will fetch the FPR 'command' entry describing how to create access derivatives for the object's OBJ datastream and print it out in [Krumo](http://krumo.sourceforge.net/) format.
+Currently, visiting islandora/object/%islandora_object/fpr will fetch FPR entries describing how to create access and preservation derivatives for the object's OBJ datastream and print it out to the user.
 
 ## Maintainer
 
