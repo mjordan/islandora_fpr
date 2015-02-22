@@ -174,7 +174,7 @@ function islandora_fpr_get_fpr_data(AbstractObject $islandora_object) {
  */
 function islandora_fpr_add_datastream(AbstractObject $object, $dsid, $command) {
   try {
-    $command = preg_replace( "/\r|\n/", "", $command);
+    $command = preg_replace("/\r|\n/", "", $command);
     $ingest = !isset($object[$dsid]);
     if ($ingest) {
       $ds = $object->constructDatastream($dsid, 'M');
