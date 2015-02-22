@@ -111,9 +111,9 @@ function islandora_fpr_get_fpr_data(AbstractObject $islandora_object) {
         array('@puid' => $puid));
     }
     else {
+      // Access command request.
       $command_parts = explode('/', $access_rule_response_data->objects[0]->command);
       $access_command_uuid = $command_parts[5];
-      // Access command request.
       $access_command_request = $endpoint . 'fp-command/?format=json&uuid=' .
         $access_command_uuid;
       $access_command_response = drupal_http_request($access_command_request);
@@ -123,6 +123,7 @@ function islandora_fpr_get_fpr_data(AbstractObject $islandora_object) {
       }
       else {
         $row[] = $access_command_response_data->objects[0]->command;
+        islandora_fpr_add_datastream($islandora_object, 'FPR_ACCESS_CMD', $access_command_response_data->objects[0]->command);
       }
     }
 
@@ -136,9 +137,9 @@ function islandora_fpr_get_fpr_data(AbstractObject $islandora_object) {
         array('@puid' => $puid));
     }
     else {
+      // Preservation command request.
       $command_parts = explode('/', $preservation_rule_response_data->objects[0]->command);
       $preservation_rule_uuid = $command_parts[5];
-      // Preservation command request.
       $preservation_command_request = $endpoint .
         'fp-command/?format=json&uuid=' . $preservation_rule_uuid;
       $preservation_command_response = drupal_http_request($preservation_command_request);
@@ -148,6 +149,7 @@ function islandora_fpr_get_fpr_data(AbstractObject $islandora_object) {
       }
       else {
         $row[] = $preservation_command_response_data->objects[0]->command;
+        islandora_fpr_add_datastream($islandora_object, 'FPR_PRESERVATION_CMD', $preservation_command_response_data->objects[0]->command);
       }
     }
 
@@ -157,12 +159,55 @@ function islandora_fpr_get_fpr_data(AbstractObject $islandora_object) {
 }
 
 /**
+ * Adds a datastream to an object.
+ *
+ * @param AbstractObject $object
+ *   The object to add a datastream to.
+ * @param string $dsid
+ *   The datastream ID to be added.
+ * @param string $command
+ *   A string containing the command
+ *
+ * @return bool|string
+ *   TRUE if the datastream was added/modified successfully, the error message
+ *   otherwise.
+ */
+function islandora_fpr_add_datastream(AbstractObject $object, $dsid, $command) {
+  try {
+    $command = preg_replace( "/\r|\n/", "", $command);
+    $ingest = !isset($object[$dsid]);
+    if ($ingest) {
+      $ds = $object->constructDatastream($dsid, 'M');
+      $ds->label = $dsid;
+      $ds->mimeType = 'text/plain';
+    }
+    else {
+      $ds = $object[$dsid];
+    }
+    $ds->setContentFromString($command);
+    if ($ingest) {
+      $object->ingestDatastream($ds);
+    }
+    return TRUE;
+  }
+  catch (exception $e) {
+    $variables = array(
+      '@dsid' => $dsid,
+      '@ret' => $e->getTraceAsString(),
+    );
+    watchdog('islandora_fpr', 'Failed to add @dsid datastream.<br/>Error: @ret', $variables, WATCHDOG_ERROR);
+    $message = $e->getMessage();
+    return $message;
+  }
+}
+
+/**
  * Parses an object's FITS datastream to get the PUID.
  *
  * @param string $fits_xml
  *   The content of the FITS datastream.
  *
- * return string
+ * return bool|string
  *   The PRONOM ID extracted from the FITS XML. Returns
  *   FALSE if no 'identification' element was found or
  *   if a conflict was explicitly found.
