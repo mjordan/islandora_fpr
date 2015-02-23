@@ -1,0 +1,178 @@
+<?php
+
+/**
+ * @file
+ * Sample module that creates a derivative using commands managed by
+ * the Islandora FPR module.
+ */
+
+/**
+ * Implements hook_islandora_derivative().
+ */
+function islandora_fpr_image_islandora_derivative(AbstractObject $object = NULL) {
+  $derivatives = array();
+  $derivatives[] = array(
+    'source_dsid' => 'OBJ',
+    'destination_dsid' => 'FPR_IMAGE_TEST_DS',
+    // We use a high weight since we want this derivatve to be created
+    // after the FITS and FPR_ACCESS_CMD derivatives have been created.
+    'weight' => '50',
+    'function' => array(
+      'islandora_fpr_image_create_access_datastream',
+    ),
+  );
+
+  return $derivatives;
+}
+
+/**
+ * Creates datastreams for given object.
+ *
+ * @param AbstractObject $object
+ *   The object that will be used to generate/store the derivatives.
+ * @param bool $force
+ *   Whether derivative generation is being forced or not.
+ * @param array $hook
+ *   The derivative definition.
+ *
+ * @return array
+ *   An array describing the outcome of the MODS creation.
+ *
+ * @see hook_islandora_derivative()
+ */
+function islandora_fpr_image_create_access_datastream(AbstractObject $object, $force = TRUE, $hook = array()) {
+  if (!isset($object[$hook['source_dsid']])) {
+    return array(
+      'success' => FALSE,
+      'messages' => array(
+        array(
+          'message' => t('No @source datastream present for object @pid - derivative XML datastream creation skipped.'),
+          'message_sub' => array('@source' => $hook['source_dsid'], '@pid' => $object->id),
+          'type' => 'watchdog',
+          'severity' => WATCHDOG_ERROR,
+        ),
+      ),
+    );
+  }
+  if (!isset($object['FPR_ACCESS_CMD'])) {
+    return array(
+      'success' => FALSE,
+      'messages' => array(
+        array(
+          'message' => t('No FPR_ACCESS_CMD datastream present for object @pid - derivative XML datastream creation skipped.'),
+          'message_sub' => array('@pid' => $object->id),
+          'type' => 'watchdog',
+          'severity' => WATCHDOG_ERROR,
+        ),
+      ),
+    );
+  }
+
+  $success = array();
+  try {
+    $command = $object['FPR_ACCESS_CMD']->content;
+    // Get OBJ content and write it to a temp file.
+    $pid = str_replace(array(':', '-'), '_', $object->id);
+    $mime_detect = new MimeDetect();
+    $extension = $mime_detect->getExtension($object['OBJ']->mimetype);
+    $obj_filepath = 'temporary://OBJ_' . $pid . '.' . $extension;
+    $object['OBJ']->getContent($obj_filepath);
+    // Define output path.
+    $fpr_test_ds_filepath = 'temporary://' . $hook['destination_dsid'] . '_' . $pid . '.' . $extension;
+    // Replace placeholders in the command with the file paths.
+    $command = preg_replace('/"%fileFullName%"/', drupal_realpath($obj_filepath), $command);
+    $command = preg_replace('/"%outputDirectory%%prefix%%fileName%%postfix%.jpg"/',
+      drupal_realpath($fpr_test_ds_filepath), $command);
+    // Run the command.
+    $output = array();
+    exec($command, $output, $ret);
+    // @todo: Check for failure on the command (but we can't assume
+    // success will be '0');
+    if (TRUE) {
+      $success = array(
+        'success' => TRUE,
+        'messages' => array(
+          array(
+            'message' => t('Added @dsid datastream to @pid.',
+              array('@dsid' => $hook['destination_dsid'], '@pid' => $object->id)),
+            'type' => 'watchdog',
+            'severity' => WATCHDOG_ERROR,
+          ),
+        ),
+      );
+    }
+    // drupal_unlink($obj_filepath);
+    $ret = islandora_fpr_image_add_datastream($object, $hook['destination_dsid'],
+      drupal_realpath($fpr_test_ds_filepath));
+    if (!$ret) {
+      $success = array(
+        'success' => FALSE,
+        'messages' => array(
+          array(
+            'message' => t('Failed to add @dsid datastream to @pid.',
+              array('@dsid' => $hook['destination_dsid'], '@pid' => $object->id)),
+            'type' => 'watchdog',
+            'severity' => WATCHDOG_ERROR,
+          ),
+        ),
+      );
+    }
+  }
+  catch (exception $e) {
+    $success = array(
+      'success' => FALSE,
+      'messages' => array(
+        array(
+          'message' => t('Failed to add @dsid datastream to @pid.',
+            array('@dsid' => $hook['destination_dsid'], '@pid' => $object->id)),
+          'type' => 'watchdog',
+          'severity' => WATCHDOG_ERROR,
+        ),
+      ),
+    );
+  }
+
+  return $success;
+}
+
+/**
+ * Adds the given file as a datastream to the given object.
+ *
+ * @param AbstractObject $object
+ *   The object to add the datasteam to.
+ * @param string $dsid
+ *   The DSID of the datastream to add.
+ * @param string $file_path
+ *   The absolute path to the file to add as the datastream content.
+ *
+ * @return bool|string
+ *   TRUE if the datastream was added/modified successfully, the error message
+ *   otherwise.
+ */
+function islandora_fpr_image_add_datastream(AbstractObject $object, $dsid, $file_path) {
+  try {
+    $ingest = !isset($object[$dsid]);
+    if ($ingest) {
+      $ds = $object->constructDatastream($dsid, 'M');
+      $ds->label = $dsid;
+      $ds->mimeType = $object['OBJ']->mimeType;
+    }
+    else {
+      $ds = $object[$dsid];
+    }
+    $ds->setContentFromFile($file_path);
+    if ($ingest) {
+      $object->ingestDatastream($ds);
+    }
+    // drupal_unlink($file_path);
+    return TRUE;
+  }
+  catch (exception $e) {
+    $variables = array(
+      '@ret' => $e->getTraceAsString(),
+    );
+    watchdog('islandora_fpr_image', 'Islandora FPR Image failed to add data stream.<br/>Error: @ret', $variables, WATCHDOG_ERROR);
+    $message = $e->getMessage();
+    return $message;
+  }
+}

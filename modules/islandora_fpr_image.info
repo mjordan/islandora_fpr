@@ -1,0 +1,5 @@
+name = "Islandora FPR Image (sample)"
+description = "Sample module that creates a derivative using commands managed by the Islandora FPR module."
+package = Islandora Tools
+dependencies[] = islandora_fpr
+core = 7.x
