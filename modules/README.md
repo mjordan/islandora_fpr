@@ -17,7 +17,7 @@ None. It only needs to be enabled.
 To see this module in action, you need to "Regenerate all derivatives" (under an object's "Properties" tab). The following conditions must be in place:
 
 * The object's OBJ datastream must have a Mimetype of "image/jpeg"
-* The object must have an FPR_ACCESS_CMD datastream
+* The object must have an FPR_ACCESS_CMD datastream. Currently, this is generated when someone visitis the "FPR" tab for the object. So, you must visit this tab for any objects that you want this module to generate a derivative for before the module will generate it.
 
 
 ## Maintainer
