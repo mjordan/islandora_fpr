@@ -10,14 +10,14 @@ This sample module creates a derivative from a JPEG OBJ file with DSID 'FPR_IMAG
 
 ## Configuration
 
-None.
+None. It only needs to be enabled.
 
 ## Usage
 
 To see this module in action, you need to "Regenerate all derivatives" (under an object's "Properties" tab). The following conditions must be in place:
 
-*The object's OBJ datastream must have a Mimetype of "image/jpeg"
-*The object must have an FPR_ACCESS_CMD datastream
+* The object's OBJ datastream must have a Mimetype of "image/jpeg"
+* The object must have an FPR_ACCESS_CMD datastream
 
 
 ## Maintainer
