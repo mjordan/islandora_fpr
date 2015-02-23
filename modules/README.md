@@ -4,6 +4,8 @@
 
 This sample module creates a derivative from a JPEG OBJ file with DSID 'FPR_IMAGE_TEST' by running the access command defined for JPEGs in the FPR. It is a sample module illustrating how an FPR command can be used to create a derivative.
 
+![Datastreams added by the FPR modules](https://dl.dropboxusercontent.com/u/1015702/linked_to/islandora_fpr/islandora_fpr_sample_derivative.jpg)
+
 ## Dependencies
 
 [Islandora FPR](https://github.com/mjordan/islandora_fpr)
