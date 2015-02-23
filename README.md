@@ -6,8 +6,6 @@ This module retrieves and displays selected [Archivematica Format Policy Registr
 
 The module is a proof of concept to retrieve the FPR entries for commands that create access and preservation derivatives from an object's OBJ datastream. The module also adds a datastream for each of the commands, to illustrate one possible method for storing the commands for use by modules that create derivatives.
 
-![FPR access and preservation commands](https://dl.dropboxusercontent.com/u/1015702/linked_to/islandora_fpr/islandora_fpr_example.jpg)
-
 An accompanying sample module, Islandora FPR Image, creates a derivative from a JPEG OBJ file with DSID 'FPR_IMAGE_TEST' by running the access command defined for JPEGs in the FPR.
 
 ## Dependencies
@@ -20,7 +18,11 @@ To configure the URL of the Archivematica FPR endpoint and the HTTP timeout valu
 
 ## Usage
 
-This module inserts an "FPR" subtab into each object's "Manage" tab if the object has a FITS datastream. Clicking on this tab reveals information retrieved from the FPR (and also triggers the code that adds the datastreams). If the command datastreams exist, they are replaced by the latest content retrieved from the FPR.
+This module inserts an "FPR" subtab into each object's "Manage" tab if the object has a FITS datastream. Clicking on this tab reveals information retrieved from the FPR (and also triggers the code that adds the datastreams).
+
+![FPR access and preservation commands](https://dl.dropboxusercontent.com/u/1015702/linked_to/islandora_fpr/islandora_fpr_example.jpg)
+
+If the command datastreams exist, they are replaced by the latest content retrieved from the FPR.
 
 ## Maintainer
 
