@@ -20,7 +20,7 @@ To configure the URL of the Archivematica FPR endpoint and the HTTP timeout valu
 
 This module inserts an "FPR" subtab into each object's "Manage" tab if the object has a FITS datastream. Clicking on this tab reveals information retrieved from the FPR (and also triggers the code that adds the datastreams).
 
-![FPR access and preservation commands](https://dl.dropboxusercontent.com/u/1015702/linked_to/islandora_fpr/islandora_fpr_example.jpg)
+![FPR access and preservation commands](images/islandora_fpr_example.jpg)
 
 If the command datastreams exist, they are replaced by the latest content retrieved from the FPR.
 
